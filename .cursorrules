@@ -1,0 +1,24 @@
+# Reglas de Proyecto: Playnite Mobile Clone
+
+## Stack Tecnológico
+- Framework: React Native con Expo (Managed Workflow).
+- Lenguaje: TypeScript (Estricto).
+- Estado: Zustand (para el catálogo de juegos) o Context API.
+- Base de Datos: Expo SQLite (para el dump de precios).
+- Estilos: Tailwind CSS (NativeWind) o StyleSheet estándar.
+
+## Reglas de Código
+- Usa siempre Componentes Funcionales y Hooks.
+- Tipado estricto en todas las interfaces de juegos y precios.
+- Separa la lógica de "Escaneo de Cámara" en hooks personalizados (e.g., useGameScanner.ts).
+- No uses librerías pesadas si existe una solución nativa de Expo.
+
+## Gestión de Datos (Database Dump)
+- Los precios vienen de un dump externo; optimiza las queries SQL para no bloquear el hilo de la UI.
+- Estructura las tablas pensando en una futura migración a la API de eBay.
+- Mantén una capa de "Servicio de Precios" que abstraiga si el dato viene del dump local o de la API.
+
+## UI/UX (Estilo Playnite)
+- Diseño oscuro (Dark Mode) por defecto.
+- Navegación fluida entre la lista de juegos y el detalle del juego.
+- Prioriza el rendimiento de las imágenes (uso de expo-image).
