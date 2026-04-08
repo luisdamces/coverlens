@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useFirstRunTour } from '../../contexts/FirstRunTourContext';
 import { theme } from '../../constants/theme';
 import {
   GameRecord,
@@ -58,6 +59,7 @@ import {
 } from '../../services/storage/coverThumbCache';
 import { fetchPriceChartingProduct } from '../../services/pricechartingProvider';
 import { runCoverSourcesProbeLogLines } from '../../services/coverSourceProbe';
+import { setOnboardingDone } from '../../services/onboardingState';
 
 const IMPORT_HELP_INVALID_FILE =
   'CoverLens solo importa:\n\n' +
@@ -130,6 +132,7 @@ function ActionRow({
 
 export default function AjustesScreen() {
   const router = useRouter();
+  const { restartTour } = useFirstRunTour();
   const [form, setForm] = React.useState<ApiCredentials>({
     screenScraperUsername: '',
     screenScraperPassword: '',
@@ -533,6 +536,40 @@ export default function AjustesScreen() {
       },
     ]);
   }, []);
+
+  const onReplayOnboarding = React.useCallback(() => {
+    Alert.alert(
+      'Repetir configuración inicial',
+      'Se abrirá la guía inicial para volver a rellenar los campos importantes. Puedes ajustar cualquier dato allí y se guardará en Ajustes.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Abrir guía',
+          onPress: async () => {
+            await setOnboardingDone(false);
+            router.replace('/onboarding');
+          },
+        },
+      ]
+    );
+  }, [router]);
+
+  const onReplayFirstRunTour = React.useCallback(() => {
+    Alert.alert(
+      'Guía práctica (escáner)',
+      'Te mostraremos de nuevo los pasos: Escaner → código de barras → abrir juego → actualizar portadas.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Empezar',
+          onPress: async () => {
+            await restartTour();
+            router.replace('/(tabs)/escaner');
+          },
+        },
+      ]
+    );
+  }, [restartTour, router]);
 
   const appendLog = React.useCallback((msg: string) => {
     setDiagLog((prev) => [...prev, msg]);
@@ -1001,6 +1038,18 @@ export default function AjustesScreen() {
           hint="SteamGridDB y ScreenScraper con tus credenciales guardadas"
           onPress={onCoverSourcesProbe}
           loading={coverProbeRunning || diagRunning}
+        />
+        <ActionRow
+          icon="school-outline"
+          label="Repetir guía inicial"
+          hint="Vuelve al onboarding para completar o corregir credenciales clave"
+          onPress={onReplayOnboarding}
+        />
+        <ActionRow
+          icon="hand-left-outline"
+          label="Repetir guía práctica (escáner)"
+          hint="Indicaciones en pantalla: escanear, abrir ficha y actualizar portadas"
+          onPress={onReplayFirstRunTour}
         />
         <ActionRow
           icon="folder-open-outline"
