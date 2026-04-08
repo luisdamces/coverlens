@@ -40,6 +40,12 @@ La clave es separar por ramas y mantener una disciplina de merges.
 3. Ejecutar pruebas y lint antes de merge.
 4. Merge por PR (evitar pushes directos a ramas base).
 
+## Builds APK con EAS (checklist)
+
+Antes de cada actualización que genere **APK** para Android, sigue el protocolo detallado (lockfile con npm 10, carpeta `C:\dev\CoverLens`, qué evitar en Windows):
+
+- **[PROTOCOLO_ACTUALIZACION_APK_EAS.md](./PROTOCOLO_ACTUALIZACION_APK_EAS.md)**
+
 ## Configuracion inicial
 
 1. Haz el primer commit del repositorio (si aun no existe).
