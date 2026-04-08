@@ -71,3 +71,16 @@ export async function saveApiCredentials(input: ApiCredentials) {
 export async function clearApiCredentials() {
   await SecureStore.deleteItemAsync(STORAGE_KEY);
 }
+
+/** IGDB: necesario para resolver bien metadatos al escanear códigos de barras y cabeceras IGDB. */
+export function hasIgdbConfigured(input: ApiCredentials): boolean {
+  return Boolean(input.igdbClientId.trim() && input.igdbClientSecret.trim());
+}
+
+/**
+ * @deprecated Usar hasIgdbConfigured o validación por pasos en onboarding.
+ * Antes exigía todas las APIs; ahora solo IGDB es el núcleo para barcode + metadatos.
+ */
+export function hasRequiredOnboardingCredentials(input: ApiCredentials): boolean {
+  return hasIgdbConfigured(input);
+}

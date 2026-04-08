@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
   Alert,
@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useFirstRunTour } from '../../contexts/FirstRunTourContext';
 import { theme } from '../../constants/theme';
 import {
   GameRecord,
@@ -27,6 +28,12 @@ import {
   updateGameValueEstimate,
 } from '../../database/dbConfig';
 import { getApiCredentials } from '../../services/credentialsStore';
+import {
+  advanceTourOnOpenGameDetail,
+  completeFirstRunTour,
+  getFirstRunTourStep,
+  isFirstRunTourActive,
+} from '../../services/firstRunTour';
 import { medianActiveListingPrice, fetchEbayApplicationToken } from '../../services/ebayPriceProvider';
 import { loadCoverSourcePreferences } from '../../services/coverSourcePreferences';
 import { resolvePreferredCoverWithSource } from '../../services/coverPreferenceResolver';
@@ -73,6 +80,7 @@ type EditForm = {
 export default function GameDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { refresh: refreshTour } = useFirstRunTour();
   const [game, setGame] = React.useState<GameRecord | null>(null);
   const [retrying, setRetrying] = React.useState(false);
   const [coverRefreshing, setCoverRefreshing] = React.useState(false);
@@ -93,6 +101,15 @@ export default function GameDetailScreen() {
   }, [id]);
 
   React.useEffect(() => { loadGame(); }, [loadGame]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      void (async () => {
+        await advanceTourOnOpenGameDetail();
+        await refreshTour();
+      })();
+    }, [refreshTour])
+  );
 
   const headerDisplayUrl = game?.headerImageUrl?.trim() || game?.coverUrl;
 
@@ -375,6 +392,11 @@ export default function GameDetailScreen() {
       await loadGame();
       enqueueCoverThumbCache(game.id, url ?? game.coverUrl ?? null);
 
+      if (await isFirstRunTourActive() && (await getFirstRunTourStep()) === 3) {
+        await completeFirstRunTour();
+        await refreshTour();
+      }
+
       const headerCambiada = nextHeader !== game.headerImageUrl;
       if (!url && !headerCambiada) {
         Alert.alert('Portadas', 'No se encontró imagen de catálogo ni cabecera nueva (revisa credenciales IGDB si quieres la cabecera).');
@@ -390,7 +412,7 @@ export default function GameDetailScreen() {
     } finally {
       setCoverRefreshing(false);
     }
-  }, [game, loadGame]);
+  }, [game, loadGame, refreshTour]);
 
   const toggleFavorite = React.useCallback(async () => {
     if (!game) return;

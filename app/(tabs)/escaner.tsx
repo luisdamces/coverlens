@@ -22,6 +22,7 @@ import { theme } from '../../constants/theme';
 import { addGame, getGameByBarcode, initDatabase } from '../../database/dbConfig';
 import { resolveMetadata } from '../../services/metadataResolver';
 import { enqueueCoverThumbCache } from '../../services/storage/coverThumbCache';
+import { advanceTourAfterBarcodeScan } from '../../services/firstRunTour';
 import { extractGameInfoFromOcr } from '../../services/utils/ocrParser';
 
 type Mode = 'barcode' | 'ocr' | 'manual';
@@ -120,6 +121,7 @@ export default function EscanerScreen() {
           favorite: favorite ? 1 : 0, discOnly: discOnly ? 1 : 0,
         });
         enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
+        void advanceTourAfterBarcodeScan();
         router.replace('/');
       } catch (error) {
         if (isLikelyDuplicateError(error)) {
@@ -162,6 +164,7 @@ export default function EscanerScreen() {
         favorite: favorite ? 1 : 0, discOnly: discOnly ? 1 : 0,
       });
       enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
+      void advanceTourAfterBarcodeScan();
       router.replace('/');
     } catch (error) {
       if (isLikelyDuplicateError(error)) {
@@ -235,6 +238,7 @@ export default function EscanerScreen() {
         favorite: favorite ? 1 : 0, discOnly: discOnly ? 1 : 0,
       });
       enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
+      void advanceTourAfterBarcodeScan();
       router.replace('/');
     } catch (error) {
       if (isLikelyDuplicateError(error)) {
@@ -267,6 +271,7 @@ export default function EscanerScreen() {
         favorite: favorite ? 1 : 0, discOnly: discOnly ? 1 : 0,
       });
       enqueueCoverThumbCache(newId, resolved.coverUrl ?? null);
+      void advanceTourAfterBarcodeScan();
       setRawTitle('');
       router.replace('/');
     } catch (error) {
