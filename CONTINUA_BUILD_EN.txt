@@ -1,0 +1,5 @@
+Copia de trabajo para compilar Android (ruta corta, sin tocar OneDrive):
+  C:\dev\CoverLens
+
+Abre el proyecto en Cursor desde esa carpeta para desarrollo móvil.
+El original en OneDrive sigue siendo la copia principal; sincroniza cambios a mano o con git cuando quieras.

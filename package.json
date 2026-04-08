@@ -14,7 +14,9 @@
     "test:watch": "vitest",
     "probe:covers": "node ./scripts/probe-cover-apis.mjs",
     "probe:covers:steam": "env PROBE_SKIP_SCREENSCRAPER=1 node ./scripts/probe-cover-apis.mjs",
-    "ensure-assets": "node ./scripts/ensure-placeholder-assets.mjs"
+    "ensure-assets": "node ./scripts/ensure-placeholder-assets.mjs",
+    "verify:assets": "node ./scripts/verify-and-fix-app-assets.mjs",
+    "check:android": "node ./scripts/verify-and-fix-app-assets.mjs && npx expo-doctor && npx --yes -p typescript@~5.9.2 tsc --noEmit -p tsconfig.app.json && npx --yes -p vitest@^4.1.2 vitest run --config vitest.config.cli.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/orbitron": "^0.4.2",
@@ -50,12 +52,15 @@
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-web": "~0.21.0",
-    "react-native-worklets": "0.5.1"
+    "react-native-worklets": "0.5.1",
+    "babel-plugin-module-resolver": "^5.0.2"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0",
     "typescript": "~5.9.2",
     "vitest": "^4.1.2"
   },

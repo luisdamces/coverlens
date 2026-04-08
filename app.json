@@ -43,6 +43,13 @@
         }
       ],
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "CoverLens puede usar una foto de la galería para leer el título (OCR).",
+          "cameraPermission": "CoverLens necesita la cámara para capturar portadas y OCR."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
