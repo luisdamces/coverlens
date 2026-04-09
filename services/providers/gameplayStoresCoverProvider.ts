@@ -88,9 +88,13 @@ type GpsCover = {
   bySize?: Record<string, { url?: string } | undefined>;
 };
 
-type GpsProduct = {
+export type GpsProduct = {
   name?: string;
   cover?: GpsCover;
+  /** Precio mostrado en listado, p. ej. "7,95 €" o con NBSP + símbolo € */
+  price?: string;
+  url?: string;
+  link?: string;
 };
 
 type GpsSearchJson = {
@@ -149,12 +153,13 @@ function buildGpsSearchQuery(title: string, canonicalPlatform: string): string {
 }
 
 /**
- * Resuelve URL de portada si hay un producto bastante alineado con el título y la plataforma en la categoría de juegos GPS.
+ * Producto GPS que mejor encaja con título + plataforma (misma heurística que la portada).
+ * Sirve para portada y para precio de tienda en EUR si viene en el JSON de búsqueda.
  */
-export async function resolveCoverFromGameplayStoresSearch(
+export async function findBestGameplayStoresProduct(
   title: string,
   platformHint: string | null | undefined
-): Promise<string | null> {
+): Promise<GpsProduct | null> {
   const t = title.trim();
   const rawPlat = platformHint?.trim();
   if (!t || !rawPlat) return null;
@@ -203,7 +208,7 @@ export async function resolveCoverFromGameplayStoresSearch(
   if (!Array.isArray(products) || products.length === 0) return null;
 
   const wantPlat = platform;
-  let best: { score: number; url: string; nameLen: number } | null = null;
+  let best: { score: number; product: GpsProduct; nameLen: number } | null = null;
 
   for (const p of products) {
     const name = p.name?.trim();
@@ -223,9 +228,20 @@ export async function resolveCoverFromGameplayStoresSearch(
 
     const nameLen = parsed.title.length;
     if (!best || score > best.score || (score === best.score && nameLen < best.nameLen)) {
-      best = { score, url: coverUrl, nameLen };
+      best = { score, product: p, nameLen };
     }
   }
 
-  return best?.url ?? null;
+  return best?.product ?? null;
+}
+
+/**
+ * Resuelve URL de portada si hay un producto bastante alineado con el título y la plataforma en la categoría de juegos GPS.
+ */
+export async function resolveCoverFromGameplayStoresSearch(
+  title: string,
+  platformHint: string | null | undefined
+): Promise<string | null> {
+  const p = await findBestGameplayStoresProduct(title, platformHint);
+  return p ? pickCoverUrl(p.cover) : null;
 }

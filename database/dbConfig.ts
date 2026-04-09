@@ -2,7 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { SQLiteDatabase, openDatabaseAsync } from 'expo-sqlite';
 
-export type ValueSource = 'pricecharting' | 'ebay' | 'manual';
+export type ValueSource = 'gameplaystores' | 'pricecharting' | 'ebay' | 'manual';
 
 export type GameRecord = {
   id: number;
@@ -338,15 +338,27 @@ export type CatalogImportResult = {
  */
 export async function importCatalogRows(
   rows: NewGameInput[],
-  options: { skipDuplicates: boolean }
+  options: {
+    skipDuplicates: boolean;
+    /** Llamado con el número de filas ya procesadas (válidas o no) y el total, para UI de progreso. */
+    onProgress?: (processed: number, total: number) => void;
+  }
 ): Promise<CatalogImportResult> {
   const db = await getDb();
   let skippedDuplicates = 0;
   let skippedInvalid = 0;
   const newThumbnails: Array<{ id: number; coverUrl: string | null }> = [];
+  const total = rows.length;
+  let processed = 0;
+  const report = () => options.onProgress?.(processed, total);
 
   await db.withTransactionAsync(async () => {
     for (const input of rows) {
+      processed++;
+      if (processed === 1 || processed % 40 === 0 || processed === total) {
+        report();
+      }
+
       const title = input.title?.trim() ?? '';
       const platform = input.platform?.trim() ?? '';
       if (!title || !platform) {

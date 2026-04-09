@@ -49,6 +49,14 @@ import {
   saveCoverSourcePreferences,
   type CoverSourcePreferences,
 } from '../../services/coverSourcePreferences';
+import {
+  DEFAULT_VALUE_SOURCE_PREFERENCES,
+  VALUE_PROVIDER_LABELS,
+  loadValueSourcePreferences,
+  moveValueProvider,
+  saveValueSourcePreferences,
+  type ValueSourcePreferences,
+} from '../../services/valueSourcePreferences';
 import { deriveMetadataStatusFromGameFields } from '../../services/utils/metadataCompleteness';
 import { resolveMetadata } from '../../services/metadataResolver';
 import { parseCatalogImport } from '../../services/import/catalogImport';
@@ -155,6 +163,7 @@ export default function AjustesScreen() {
   const [retryRunning, setRetryRunning] = React.useState(false);
   const [retryProgress, setRetryProgress] = React.useState('');
   const [importRunning, setImportRunning] = React.useState(false);
+  const [importProgress, setImportProgress] = React.useState('');
   const [catalogGuideOpen, setCatalogGuideOpen] = React.useState(false);
   const [apisMetadataOpen, setApisMetadataOpen] = React.useState(false);
   const [gameCount, setGameCount] = React.useState(0);
@@ -162,10 +171,19 @@ export default function AjustesScreen() {
     order: [...DEFAULT_COVER_SOURCE_PREFERENCES.order],
     enabled: { ...DEFAULT_COVER_SOURCE_PREFERENCES.enabled },
   }));
+  const [valuePrefs, setValuePrefs] = React.useState<ValueSourcePreferences>(() => ({
+    order: [...DEFAULT_VALUE_SOURCE_PREFERENCES.order],
+    enabled: { ...DEFAULT_VALUE_SOURCE_PREFERENCES.enabled },
+  }));
 
   const persistCoverPrefs = React.useCallback(async (next: CoverSourcePreferences) => {
     setCoverPrefs(next);
     await saveCoverSourcePreferences(next);
+  }, []);
+
+  const persistValuePrefs = React.useCallback(async (next: ValueSourcePreferences) => {
+    setValuePrefs(next);
+    await saveValueSourcePreferences(next);
   }, []);
 
   React.useEffect(() => {
@@ -175,6 +193,7 @@ export default function AjustesScreen() {
       .then((gs) => setGameCount(gs.length))
       .catch(() => {});
     loadCoverSourcePreferences().then(setCoverPrefs).catch(() => {});
+    loadValueSourcePreferences().then(setValuePrefs).catch(() => {});
   }, []);
 
   // ── Catálogo ────────────────────────────────────────────────────────────────
@@ -389,11 +408,20 @@ export default function AjustesScreen() {
           copyToCacheDirectory: true,
         });
         if (pick.canceled || !pick.assets?.[0]?.uri) return;
+
+        setImportRunning(true);
+        setImportProgress('Leyendo archivo…');
+
         const text = await FileSystem.readAsStringAsync(pick.assets[0].uri, {
           encoding: FileSystem.EncodingType.UTF8,
         });
+
+        setImportProgress('Analizando contenido…');
         const parsed = parseCatalogImport(text);
+
         if (parsed.rows.length === 0) {
+          setImportProgress('');
+          setImportRunning(false);
           const head =
             parsed.notes.length > 0
               ? `${parsed.notes.join('\n')}\n\n`
@@ -401,6 +429,7 @@ export default function AjustesScreen() {
           Alert.alert('Archivo no importable', head + IMPORT_HELP_INVALID_FILE);
           return;
         }
+
         const originLabel =
           parsed.source === 'coverlens'
             ? 'JSON CoverLens'
@@ -410,6 +439,10 @@ export default function AjustesScreen() {
                 ? 'JSON tipo Playnite'
                 : 'JSON genérico';
         const noteExtra = parsed.notes.length > 0 ? `\n\n${parsed.notes.join('\n')}` : '';
+
+        setImportProgress('');
+        setImportRunning(false);
+
         Alert.alert(
           'Importar catálogo',
           `Origen detectado: ${originLabel}\nJuegos a importar: ${parsed.rows.length}.${noteExtra}\n\n` +
@@ -421,9 +454,15 @@ export default function AjustesScreen() {
               onPress: () => {
                 void (async () => {
                   setImportRunning(true);
+                  setImportProgress(`Importando 0 / ${parsed.rows.length}…`);
                   try {
                     await initDatabase();
-                    const res = await importCatalogRows(parsed.rows, { skipDuplicates: true });
+                    const res = await importCatalogRows(parsed.rows, {
+                      skipDuplicates: true,
+                      onProgress: (done, total) => {
+                        setImportProgress(`Importando ${done} / ${total}…`);
+                      },
+                    });
                     for (const t of res.newThumbnails) {
                       enqueueCoverThumbCache(t.id, t.coverUrl);
                     }
@@ -436,6 +475,7 @@ export default function AjustesScreen() {
                   } catch {
                     Alert.alert('Error', 'No se pudo completar la importación.');
                   } finally {
+                    setImportProgress('');
                     setImportRunning(false);
                   }
                 })();
@@ -444,6 +484,8 @@ export default function AjustesScreen() {
           ]
         );
       } catch (e) {
+        setImportProgress('');
+        setImportRunning(false);
         const msg = e instanceof Error ? e.message : String(e);
         const isJsonErr = msg.toLowerCase().includes('json');
         Alert.alert(
@@ -793,6 +835,62 @@ export default function AjustesScreen() {
           ))}
         </View>
 
+        <View style={styles.coverPrefSection}>
+          <Text style={styles.coverPrefSectionTitle}>Orden de fuentes (valor en ficha)</Text>
+          <Text style={styles.coverPrefSectionHint}>
+            «Actualizar valor» en la ficha del juego prueba cada fuente activa en este orden. GameplayStores no requiere
+            clave (precio en tienda, EUR). PriceCharting y eBay usan las credenciales de abajo si están activas y
+            configuradas.
+          </Text>
+          {valuePrefs.order.map((id, index) => (
+            <View key={id} style={styles.coverPrefRow}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={styles.coverPrefLabel}>{VALUE_PROVIDER_LABELS[id]}</Text>
+              </View>
+              <View style={styles.coverPrefControls}>
+                <TouchableOpacity
+                  onPress={() => void persistValuePrefs(moveValueProvider(valuePrefs, id, 'up'))}
+                  disabled={index === 0}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Subir ${VALUE_PROVIDER_LABELS[id]}`}
+                >
+                  <Ionicons
+                    name="chevron-up"
+                    size={22}
+                    color={index === 0 ? '#333' : theme.colors.primary}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => void persistValuePrefs(moveValueProvider(valuePrefs, id, 'down'))}
+                  disabled={index === valuePrefs.order.length - 1}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Bajar ${VALUE_PROVIDER_LABELS[id]}`}
+                >
+                  <Ionicons
+                    name="chevron-down"
+                    size={22}
+                    color={index === valuePrefs.order.length - 1 ? '#333' : theme.colors.primary}
+                  />
+                </TouchableOpacity>
+                <Switch
+                  value={valuePrefs.enabled[id]}
+                  onValueChange={(v) =>
+                    void persistValuePrefs({
+                      ...valuePrefs,
+                      enabled: { ...valuePrefs.enabled, [id]: v },
+                    })
+                  }
+                  trackColor={{ false: '#333', true: 'rgba(0,127,255,0.35)' }}
+                  thumbColor={valuePrefs.enabled[id] ? theme.colors.primary : '#888'}
+                  accessibilityLabel={`Fuente valor ${VALUE_PROVIDER_LABELS[id]}`}
+                />
+              </View>
+            </View>
+          ))}
+        </View>
+
         {retryRunning && retryProgress ? (
           <View style={styles.progressBox}>
             <ActivityIndicator color={theme.colors.primary} size="small" />
@@ -873,6 +971,15 @@ export default function AjustesScreen() {
           </View>
         ) : null}
 
+        {importRunning && importProgress ? (
+          <View style={styles.progressBox}>
+            <ActivityIndicator color={theme.colors.primary} size="small" />
+            <Text style={styles.progressText} numberOfLines={3}>
+              {importProgress}
+            </Text>
+          </View>
+        ) : null}
+
         <ActionRow
           icon="download-outline"
           label="Importar catálogo"
@@ -938,7 +1045,12 @@ export default function AjustesScreen() {
 
         {/* SteamGridDB */}
         <View style={styles.subsection}>
-          <Text style={styles.subsectionTitle}>SteamGridDB — carátulas</Text>
+          <View style={styles.subsectionHeader}>
+            <Text style={styles.subsectionTitle}>SteamGridDB — carátulas</Text>
+            <View style={styles.badgeRecommended}>
+              <Text style={styles.badgeRecommendedText}>Recomendado</Text>
+            </View>
+          </View>
           <Text style={styles.sectionHint}>
             Tras GameplayStores cuando aplica. Grids en tamaño reducido (467×600) para menos datos; prueba título
             original y limpio.
@@ -951,7 +1063,12 @@ export default function AjustesScreen() {
 
         {/* ScreenScraper */}
         <View style={styles.subsection}>
-          <Text style={styles.subsectionTitle}>ScreenScraper — último recurso para portadas</Text>
+          <View style={styles.subsectionHeader}>
+            <Text style={styles.subsectionTitle}>ScreenScraper — último recurso para portadas</Text>
+            <View style={styles.badgeOptional}>
+              <Text style={styles.badgeOptionalText}>Opcional</Text>
+            </View>
+          </View>
           <Text style={styles.sectionHint}>
             Tras GameplayStores (si aplica), SteamGridDB e IGDB. Cajas por plataforma si la API acepta tu cuenta (Dev ID /
             Dev password del foro).
@@ -967,9 +1084,15 @@ export default function AjustesScreen() {
 
         {/* Cotización */}
         <View style={styles.subsection}>
-          <Text style={styles.subsectionTitle}>Cotización (opcional)</Text>
+          <View style={styles.subsectionHeader}>
+            <Text style={styles.subsectionTitle}>Cotización — valor orientativo</Text>
+            <View style={styles.badgeOptional}>
+              <Text style={styles.badgeOptionalText}>Opcional</Text>
+            </View>
+          </View>
           <Text style={styles.sectionHint}>
-            PriceCharting Pro: precios guía en USD (CIB o suelto según “solo disco” en la ficha). eBay: mediana de
+            No hace falta para catalogar ni para portadas. PriceCharting Pro: precios guía en USD (CIB o suelto según
+            “solo disco” en la ficha). eBay: mediana de
             anuncios activos en el marketplace indicado (orientativo, no precio de subasta cerrada). Puedes usar solo
             eBay, solo PriceCharting, o ambos.
           </Text>
@@ -1150,6 +1273,32 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: theme.colors.primary,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  badgeRecommended: {
+    backgroundColor: 'rgba(46,204,113,0.12)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(46,204,113,0.35)',
+  },
+  badgeRecommendedText: {
+    color: '#2ecc71',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  badgeOptional: {
+    backgroundColor: 'rgba(149,165,166,0.12)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(149,165,166,0.35)',
+  },
+  badgeOptionalText: {
+    color: theme.colors.textDim,
     fontSize: 10,
     fontWeight: '700',
   },

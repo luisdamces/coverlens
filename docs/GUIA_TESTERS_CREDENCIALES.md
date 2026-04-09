@@ -1,4 +1,4 @@
-# Guía corta para testers — APIs y portadas
+# Guía para testers — APIs, portadas y cotización (opcional)
 
 ## Es normal que sin credenciales veas menos cosas
 
@@ -14,6 +14,20 @@ Si **no configuras** IGDB, SteamGridDB, ScreenScraper, etc.:
 
 ---
 
+## Qué es obligatorio, recomendado u opcional
+
+| Prioridad | Servicio | Para qué sirve |
+|-----------|----------|----------------|
+| **Muy recomendado (casi imprescindible para escáner)** | **IGDB** (vía Twitch) | Metadatos al leer códigos de barras, búsquedas, muchas fichas y cabeceras. |
+| **Recomendado** | **SteamGridDB** | Más aciertos en portadas/rejillas cuando el título no coincide a la primera. |
+| **Opcional** | **ScreenScraper** | Último recurso en la cadena de portadas para cajas «difíciles». |
+| **Opcional** | **PriceCharting Pro** | Precio guía en USD en la ficha (requiere suscripción Pro con API). |
+| **Opcional** | **eBay Developers** | Mediana de anuncios activos (orientativo; no es precio de venta cerrada). |
+
+Puedes usar solo IGDB, o IGDB + SteamGridDB, y añadir el resto cuando quieras.
+
+---
+
 ## Dónde poner las claves en la app
 
 1. Abre **Ajustes** (última pestaña).
@@ -25,40 +39,73 @@ Las claves se guardan en el dispositivo (almacenamiento seguro), no en nuestros 
 
 ---
 
-## Qué configurar primero (recomendado)
+## 1. IGDB — Twitch Developer Console (muy recomendado)
 
-### 1. IGDB (gratis, lo más útil para datos de juego)
+IGDB se usa con una **aplicación** creada en la consola de desarrollador de **Twitch** (gratis). La cuenta de Twitch es la misma que usarás en `dev.twitch.tv`.
 
-IGDB usa la **consola de desarrollador de Twitch** (misma cuenta que Twitch).
+### Si no tienes cuenta Twitch
 
-1. Entra en **https://dev.twitch.tv/console** e inicia sesión.
-2. **Registrar tu aplicación** (nombre cualquiera, OAuth redirect puede ser `http://localhost` si te lo pide).
-3. Copia **Client ID** y genera un **Client Secret**.
-4. En CoverLens → Ajustes → APIs → **IGDB**: pega ambos y guarda.
+1. Entra en **https://www.twitch.tv** y pulsa **Registrarse** (Sign up). Completa email, usuario y contraseña.
+2. Si piden verificación, revisa el correo y confirma la cuenta.
+
+### Crear la aplicación y obtener Client ID y Secret
+
+1. Abre **https://dev.twitch.tv/console** e inicia sesión con tu cuenta Twitch.
+2. En el panel, pulsa **Register Your Application** (Registrar aplicación).
+3. **Name**: un nombre cualquiera (ej. `CoverLens` o tu nick).
+4. **OAuth Redirect URLs**: escribe exactamente **`http://localhost`**. Si el formulario solo acepta HTTPS, prueba **`https://localhost`**.
+5. **Category**: elige **Application Integration** (o la opción equivalente que muestre el desplegable).
+6. Pulsa **Create** / **Create Application**.
+7. En la página de tu aplicación verás el **Client ID**. Cópialo.
+8. Pulsa **New Secret** (o **Manage** → generar secret). Copia el **Client Secret** en ese momento: **solo se muestra una vez**; guárdalo en un sitio seguro.
+9. En CoverLens → Ajustes → APIs de metadatos → **IGDB**: pega **Client ID** y **Client Secret** y guarda.
 
 Con esto mejoran búsquedas de metadatos, portada por URL de IGDB y la **cabecera** ancha en la ficha cuando haya datos.
 
-### 2. SteamGridDB (gratis, buenas rejillas / portadas)
+---
 
-1. Crea cuenta en **https://www.steamgriddb.com**
-2. En tu perfil, sección de **API** / preferencias, genera una **API Key**.
-3. Pégala en CoverLens → **SteamGridDB** → Guardar.
+## 2. SteamGridDB (recomendado)
+
+1. Entra en **https://www.steamgriddb.com** y crea cuenta (**Register** / **Sign up**).
+2. Si piden confirmar el correo, abre el enlace del email.
+3. Inicia sesión. Abre tu **perfil** o **Settings** (menú de usuario / avatar).
+4. Busca la sección **API** o **API Keys** y genera una **API Key** nueva.
+5. Cópiala y pégala en CoverLens → **SteamGridDB** → **Guardar credenciales**.
 
 Ayuda cuando la cadena de portadas elige SteamGridDB (orden configurable en **«Orden de fuentes (portadas)»** en Ajustes).
 
-### 3. ScreenScraper (opcional, último recurso)
+---
 
-1. Registro en **https://www.screenscraper.fr**
-2. Usuario y contraseña en CoverLens. Si el foro te da **Dev ID / Dev password**, puedes añadirlos (mejor cuota en algunos casos).
+## 3. ScreenScraper (opcional)
+
+1. Regístrate en el foro: **https://www.screenscraper.fr** (sigue el enlace de registro que indique la web).
+2. Completa la verificación de correo si la piden.
+3. **Usuario y contraseña del foro** son los mismos que pondrás en CoverLens.
+4. **Opcional**: si el foro te asigna **Dev ID** y **Dev Password** (o los obtienes en la zona de desarrollador), puedes añadirlos en Ajustes para mejor cuota en algunos casos.
 
 ---
 
-## Opcional: precios (no afectan al catálogo básico)
+## 4. Cotización — PriceCharting y eBay (opcional)
 
-- **PriceCharting**: requiere suscripción **Pro** y token de API — solo para estimaciones de valor en la ficha.
-- **eBay Developers**: app gratuita con Client ID + Secret — mediana de anuncios activos (orientativo).
+No son necesarios para catalogar, escanear ni para la mayoría de portadas. Solo añaden **valor orientativo** en la ficha del juego.
 
-Enlaces de referencia:
+### PriceCharting Pro
+
+- Requiere suscripción **Pro** que incluya acceso a la **API** (consulta en **https://www.pricecharting.com** la opción Pro con API).
+- Obtén el **token** de API desde tu cuenta Pro y pégalo en CoverLens → **PriceCharting token**.
+
+### eBay Developers (gratis a nivel de registro de app)
+
+- No uses tu contraseña de compras de eBay. Creas una **aplicación** en el portal de desarrolladores.
+1. Entra en **https://developer.ebay.com** e inicia sesión (puedes usar tu cuenta de eBay de usuario).
+2. Ve a **My Account** → **Application Keys** (o **Keys**).
+3. Crea un keyset de **Production** (o Sandbox si quieres probar; la app detecta `-SBX-` en el Client ID).
+4. Copia **App ID (Client ID)** y **Cert ID / Client Secret** según muestre el panel.
+5. En CoverLens, rellena **eBay Client ID**, **eBay Client Secret** y el **marketplace** (p. ej. `EBAY_ES` o `EBAY_US`).
+
+---
+
+## Enlaces rápidos
 
 - Twitch / IGDB: https://dev.twitch.tv/console  
 - SteamGridDB: https://www.steamgriddb.com  
@@ -76,12 +123,13 @@ Enlaces de referencia:
 
 ---
 
-## Resumen para testers
+## Resumen
 
-| Situación                         | Qué esperar                                      |
-|----------------------------------|--------------------------------------------------|
-| Sin ninguna API                  | Catálogo OK; menos metadatos y más portadas vacías |
-| Solo IGDB                        | Fichas de texto mucho mejores + portada/cabecera IGDB cuando existan |
-| IGDB + SteamGridDB (+ opcional SS) | Mejor cobertura de portadas en el grid            |
+| Situación | Qué esperar |
+|-----------|--------------|
+| Sin ninguna API | Catálogo OK; menos metadatos y más portadas vacías |
+| Solo IGDB | Fichas de texto mucho mejores + portada/cabecera IGDB cuando existan |
+| IGDB + SteamGridDB (+ opcional ScreenScraper) | Mejor cobertura de portadas en el grid |
+| + PriceCharting y/o eBay | Valor orientativo en la ficha (opcional) |
 
 Cualquier duda sobre la beta, anótala con **pasos para reproducir** y modelo de móvil; eso ayuda mucho.

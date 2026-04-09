@@ -178,7 +178,8 @@ export default function OnboardingScreen() {
             </Text>
             <Text style={styles.heroBodyMuted}>
               En los siguientes pasos podrás pegar claves opcionales que mejoran carátulas y fuentes de respaldo. Todo se
-              guarda en Ajustes y lo puedes cambiar cuando quieras.
+              guarda en Ajustes y lo puedes cambiar cuando quieras. La cotización (PriceCharting / eBay) es totalmente
+              opcional y se configura después en Ajustes si la necesitas.
             </Text>
           </View>
         ) : null}
@@ -190,8 +191,20 @@ export default function OnboardingScreen() {
               <Badge label="Núcleo escáner" tone="core" />
             </View>
             <Text style={styles.body}>
-              Conecta con Twitch Developer Console. Estos datos son los que usa la app para resolver título, plataforma y
-              datos al leer un barcode, y para cabeceras oficiales cuando aplica.
+              IGDB se accede con una aplicación en la consola de desarrollador de Twitch (gratis). Es lo que usa la app
+              para resolver título, plataforma y ficha al leer un código de barras, y para cabeceras oficiales cuando
+              aplica.
+            </Text>
+            <Text style={styles.stepsBlock}>
+              {`1) Cuenta Twitch: si no tienes, crea una en twitch.tv (gratis).\n`}
+              {`2) Abre la consola: dev.twitch.tv/console e inicia sesión con esa cuenta.\n`}
+              {`3) Pulsa «Register Your Application» (Registrar aplicación).\n`}
+              {`4) Nombre: el que quieras (ej. CoverLens).\n`}
+              {`5) OAuth Redirect URLs: escribe exactamente http://localhost (si el formulario solo acepta HTTPS, prueba https://localhost).\n`}
+              {`6) Category: elige «Application Integration» o la opción equivalente que muestre el formulario.\n`}
+              {`7) Crea la aplicación y abre su ficha.\n`}
+              {`8) Copia el Client ID. Pulsa «New Secret» / generar secret, copia el Client Secret (solo se muestra una vez; guárdalo en un sitio seguro).\n`}
+              {`9) Pega ambos abajo y más tarde en Ajustes → APIs de metadatos.`}
             </Text>
             <TextInput
               style={styles.input}
@@ -238,8 +251,15 @@ export default function OnboardingScreen() {
               <Badge label="Recomendado" tone="recommended" />
             </View>
             <Text style={styles.body}>
-              Muchas portadas del catálogo pueden resolverse sin clave propia, pero con tu API key sube mucho la tasa de
-              aciertos cuando el título no coincide a la primera.
+              Muchas portadas pueden resolverse sin clave propia; con tu API key sube mucho la tasa de aciertos cuando el
+              título no coincide a la primera.
+            </Text>
+            <Text style={styles.stepsBlock}>
+              {`1) Entra en steamgriddb.com y crea cuenta (Register).\n`}
+              {`2) Si piden confirmación, revisa el correo y activa la cuenta.\n`}
+              {`3) Inicia sesión → avatar / menú de usuario → Profile o Settings.\n`}
+              {`4) Busca la sección «API» o «API Keys» y genera una clave nueva.\n`}
+              {`5) Copia la API Key y pégala abajo (y en Ajustes si la cambias).`}
             </Text>
             <TextInput
               style={styles.input}
@@ -264,7 +284,13 @@ export default function OnboardingScreen() {
             </View>
             <Text style={styles.body}>
               Último recurso en la cadena de portadas cuando otras fuentes no devuelven imagen. Solo necesario si quieres
-              exprimir al máximo las carátulas «difíciles».
+              exprimir al máximo las carátulas difíciles.
+            </Text>
+            <Text style={styles.stepsBlock}>
+              {`1) Entra en screenscraper.fr y regístrate en el foro.\n`}
+              {`2) Completa verificación de correo si la piden.\n`}
+              {`3) Usuario y contraseña del foro son los mismos que pegarás en CoverLens.\n`}
+              {`4) Opcional: si el foro te asigna Dev ID y Dev Password, añádelos en Ajustes para mejor cuota en algunos casos.`}
             </Text>
             <TextInput
               style={styles.input}
@@ -298,7 +324,9 @@ export default function OnboardingScreen() {
               ficha.
             </Text>
             <Text style={styles.bodyMuted}>
-              PriceCharting y eBay se configuran en Ajustes cuando los necesites; no hacen falta para este primer recorrido.
+              Cotización (opcional): en Ajustes → APIs puedes añadir PriceCharting Pro (token de suscripción con API) y/o
+              eBay Developers (Client ID y Secret de una app gratuita; no es tu contraseña de compras). Sirven solo para
+              valor orientativo en la ficha; no hacen falta para catalogar ni portadas.
             </Text>
           </View>
         ) : null}
@@ -370,6 +398,13 @@ const styles = StyleSheet.create({
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
   title: { fontSize: 20, fontWeight: '800', color: BRAND.ink },
   body: { fontSize: 14, lineHeight: 21, color: BRAND.ink },
+  stepsBlock: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: BRAND.ink,
+    marginTop: 4,
+    marginBottom: 4,
+  },
   bodyMuted: { fontSize: 13, lineHeight: 19, color: BRAND.muted },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   badgeText: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4 },

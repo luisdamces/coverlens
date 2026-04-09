@@ -34,18 +34,14 @@ import {
   getFirstRunTourStep,
   isFirstRunTourActive,
 } from '../../services/firstRunTour';
-import { medianActiveListingPrice, fetchEbayApplicationToken } from '../../services/ebayPriceProvider';
 import { loadCoverSourcePreferences } from '../../services/coverSourcePreferences';
+import { loadValueSourcePreferences } from '../../services/valueSourcePreferences';
+import { resolveValueEstimateFromPreferences } from '../../services/valuePreferenceResolver';
 import { resolvePreferredCoverWithSource } from '../../services/coverPreferenceResolver';
 import { resolveMetadata } from '../../services/metadataResolver';
 import { resolveFromIgdb } from '../../services/providers/igdbProvider';
 import { inferCoverSourceLabel } from '../../services/utils/coverUrlSource';
 import { deriveMetadataStatusFromGameFields } from '../../services/utils/metadataCompleteness';
-import {
-  fetchPriceChartingProduct,
-  pickPriceChartingCents,
-  type PcCondition,
-} from '../../services/pricechartingProvider';
 import { getIgdbImageRequestHeaders } from '../../services/igdbImageRequest';
 import { enqueueCoverThumbCache } from '../../services/storage/coverThumbCache';
 import { formatMoneyMinor, parseMoneyInputToMinor } from '../../services/utils/moneyFormat';
@@ -86,7 +82,7 @@ export default function GameDetailScreen() {
   const [coverRefreshing, setCoverRefreshing] = React.useState(false);
   const [editing, setEditing] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
-  const [priceBusy, setPriceBusy] = React.useState<null | 'pc' | 'ebay'>(null);
+  const [priceBusy, setPriceBusy] = React.useState(false);
   const [coverImageHeaders, setCoverImageHeaders] = React.useState<Record<string, string> | undefined>();
   const [form, setForm] = React.useState<EditForm>({
     title: '', platform: '', version: '', releaseYear: '',
@@ -200,93 +196,48 @@ export default function GameDetailScreen() {
     }
   }, [form, game, loadGame]);
 
-  const onPriceFromPriceCharting = React.useCallback(async () => {
+  const onPriceFromPreferencesChain = React.useCallback(async () => {
     if (!game) return;
-    const creds = await getApiCredentials();
-    if (!creds.priceChartingToken.trim()) {
-      Alert.alert('PriceCharting', 'Configura el token en Ajustes (suscripción Pro).');
-      return;
-    }
-    setPriceBusy('pc');
-    try {
-      const token = creds.priceChartingToken;
-      const discOnly = game.discOnly === 1;
-      let picked: { cents: number; condition: PcCondition } | null = null;
-      if (game.barcode?.trim()) {
-        const q1 = await fetchPriceChartingProduct(token, { upc: game.barcode });
-        if (q1) picked = pickPriceChartingCents(q1, discOnly);
-      }
-      if (!picked) {
-        const q2 = await fetchPriceChartingProduct(token, {
-          query: `${game.title} ${game.platform}`.trim(),
-        });
-        if (q2) picked = pickPriceChartingCents(q2, discOnly);
-      }
-      if (!picked) {
-        Alert.alert('PriceCharting', 'No se encontró precio guía para este juego.');
-        return;
-      }
-      await updateGameValueEstimate(game.id, {
-        valueCents: picked.cents,
-        valueCurrency: 'USD',
-        valueSource: 'pricecharting',
-        valueUpdatedAt: new Date().toISOString(),
-      });
-      await loadGame();
-      const label = formatMoneyMinor(picked.cents, 'USD');
-      Alert.alert('PriceCharting', `Guardado (${picked.condition}): ${label ?? ''}`);
-    } catch {
-      Alert.alert('Error', 'No se pudo consultar PriceCharting.');
-    } finally {
-      setPriceBusy(null);
-    }
-  }, [game, loadGame]);
-
-  const onPriceFromEbay = React.useCallback(async () => {
-    if (!game) return;
-    const creds = await getApiCredentials();
-    if (!creds.ebayClientId.trim() || !creds.ebayClientSecret.trim()) {
-      Alert.alert('eBay', 'Configura Client ID y Secret en Ajustes.');
-      return;
-    }
-    setPriceBusy('ebay');
-    try {
-      const tok = await fetchEbayApplicationToken(creds.ebayClientId, creds.ebayClientSecret);
-      if (!tok) {
-        Alert.alert('eBay', 'No se pudo obtener el token de aplicación.');
-        return;
-      }
-      const marketplace = creds.ebayMarketplaceId.trim() || 'EBAY_ES';
-      const med = await medianActiveListingPrice(
-        tok,
-        marketplace,
-        game.title,
-        game.platform,
-        creds.ebayClientId
+    const prefs = await loadValueSourcePreferences();
+    const anyEnabled = prefs.order.some((id) => prefs.enabled[id]);
+    if (!anyEnabled) {
+      Alert.alert(
+        'Valor',
+        'Activa al menos una fuente en Ajustes → Catálogo → Orden de fuentes (valor en ficha).'
       );
-      if (!med) {
+      return;
+    }
+    setPriceBusy(true);
+    try {
+      const creds = await getApiCredentials();
+      const res = await resolveValueEstimateFromPreferences({
+        title: game.title,
+        platform: game.platform,
+        barcode: game.barcode,
+        discOnly: game.discOnly === 1,
+        creds,
+        prefs,
+      });
+      if (!res) {
         Alert.alert(
-          'eBay',
-          'No hubo anuncios con precio tras probar varias búsquedas. En sandbox suele haber pocos datos: prueba marketplace EBAY_US o un título muy popular en inglés.'
+          'Valor',
+          'No se obtuvo precio con las fuentes activas. Si usas PriceCharting o eBay, revisa credenciales en Ajustes. GameplayStores solo cubre juegos que existan en la tienda con plataforma reconocida.'
         );
         return;
       }
       await updateGameValueEstimate(game.id, {
-        valueCents: med.cents,
-        valueCurrency: med.currency,
-        valueSource: 'ebay',
+        valueCents: res.cents,
+        valueCurrency: res.currency,
+        valueSource: res.source,
         valueUpdatedAt: new Date().toISOString(),
       });
       await loadGame();
-      const label = formatMoneyMinor(med.cents, med.currency);
-      Alert.alert(
-        'eBay',
-        `Mediana de anuncios activos: ${label ?? ''}\n\nBúsqueda usada: «${med.usedQuery}»`
-      );
+      const label = formatMoneyMinor(res.cents, res.currency);
+      Alert.alert('Valor', `Guardado: ${label ?? ''}`);
     } catch {
-      Alert.alert('Error', 'No se pudo consultar eBay.');
+      Alert.alert('Error', 'No se pudo actualizar el valor.');
     } finally {
-      setPriceBusy(null);
+      setPriceBusy(false);
     }
   }, [game, loadGame]);
 
@@ -593,32 +544,30 @@ export default function GameDetailScreen() {
               </Text>
               {game.valueSource ? (
                 <Text style={styles.valueHint}>
-                  Fuente: {game.valueSource === 'pricecharting' ? 'PriceCharting (USD, guía)' : game.valueSource === 'ebay' ? 'eBay (anuncios activos)' : 'Manual'}
+                  Fuente:{' '}
+                  {game.valueSource === 'gameplaystores'
+                    ? 'GameplayStores (precio en tienda, EUR)'
+                    : game.valueSource === 'pricecharting'
+                      ? 'PriceCharting (USD, guía)'
+                      : game.valueSource === 'ebay'
+                        ? 'eBay (anuncios activos)'
+                        : 'Manual'}
                   {game.valueUpdatedAt ? ` · ${new Date(game.valueUpdatedAt).toLocaleDateString('es-ES')}` : ''}
                 </Text>
               ) : (
-                <Text style={styles.valueHint}>Puedes actualizar desde PriceCharting o eBay, o editar a mano.</Text>
+                <Text style={styles.valueHint}>
+                  Pulsa «Actualizar valor» usando el orden de Ajustes → Catálogo, o edita a mano.
+                </Text>
               )}
-              <View style={styles.valueActions}>
-                <TouchableOpacity
-                  style={[styles.valueBtn, priceBusy === 'pc' && styles.valueBtnDisabled]}
-                  onPress={onPriceFromPriceCharting}
-                  disabled={priceBusy != null}
-                  accessibilityRole="button"
-                  accessibilityLabel="Actualizar valor con PriceCharting"
-                >
-                  <Text style={styles.valueBtnText}>{priceBusy === 'pc' ? '...' : 'PriceCharting'}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.valueBtn, styles.valueBtnAlt, priceBusy === 'ebay' && styles.valueBtnDisabled]}
-                  onPress={onPriceFromEbay}
-                  disabled={priceBusy != null}
-                  accessibilityRole="button"
-                  accessibilityLabel="Actualizar valor con eBay"
-                >
-                  <Text style={styles.valueBtnText}>{priceBusy === 'ebay' ? '...' : 'eBay'}</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={[styles.valueBtn, styles.valueBtnWide, priceBusy && styles.valueBtnDisabled]}
+                onPress={onPriceFromPreferencesChain}
+                disabled={priceBusy}
+                accessibilityRole="button"
+                accessibilityLabel="Actualizar valor según preferencias"
+              >
+                <Text style={styles.valueBtnText}>{priceBusy ? 'Actualizando…' : 'Actualizar valor'}</Text>
+              </TouchableOpacity>
             </View>
           ) : null}
 
@@ -855,6 +804,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#2d5a2d',
   },
+  valueBtnWide: { alignSelf: 'stretch', flex: 0, marginTop: 4 },
   valueBtnAlt: { backgroundColor: '#1a2740', borderColor: '#2d4466' },
   valueBtnDisabled: { opacity: 0.5 },
   valueBtnText: { color: theme.colors.textLight, fontSize: 13, fontWeight: '700' },
